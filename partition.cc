@@ -16,78 +16,62 @@ template<typename T> std::ostream& operator<<(std::ostream& out,std::list<T> m_l
 }
 #endif
 
-partition_unit::partition_unit(const partition_config& config):m_config(config),best_partition(2,8){
-    for(int i=0;i<m_config.app_num;i++){
-        counter.push_back(std::vector<unsigned long long>());
-        for(int j=0;j<m_config.n_assoc;j++){
-            counter[i].push_back(0);
-        }
-    }
+partition_unit::partition_unit(const partition_config& config):
+    m_config(config),
+    num_stack(m_config.n_set/m_config.samplingWidth),
+    appAccess(config.app_num,0),
+    sampleing_access(num_stack,\
+                    V(ULL)(config.app_num,0)),
+    best_partition(m_config.app_num,m_config.n_assoc/2),
+    
+    l2_sim_stack_array(num_stack,V(L(ULL))(m_config.app_num,L(ULL)(16,-1))),
+    counter(m_config.app_num,\
+            V(ULL)(m_config.n_assoc,0)),
+    local_counter(num_stack,\
+                V(V(ULL))(m_config.app_num,V(ULL)(16,0)))
+      
+{
+    
     if(m_config.samplingWidth==0){
         abort();
         return;
     }
-    for(int i=0;i<m_config.n_set/m_config.samplingWidth;i++){
-        local_counter.push_back(std::vector<std::vector<unsigned long long> >());
-        for(int j=0;j<m_config.app_num;j++){
-            local_counter[i].push_back(std::vector<unsigned long long>());
-            for(int k=0;k<m_config.n_assoc;k++){
-                local_counter[i][j].push_back(0);
-            }
-        }
-    }
-    
-    for(int i=0;i<(m_config.n_set/m_config.samplingWidth);i++){//every sample
-    
-        l2_sim_stack_array.push_back(std::vector<std::list<new_addr_type> >());
-        for(int j=0;j<2;j++){//every app
-            l2_sim_stack_array[i].push_back(std::list<new_addr_type>());
-            for(int k=0;k<m_config.n_assoc;k++){//every block
-                l2_sim_stack_array[i][j].push_back(-1);
-            }
-        }
-
-    }
-    for(int i=0;i<(m_config.n_set/m_config.samplingWidth);i++){//every sample
-        sampleing_access.push_back(std::vector<unsigned long long>());
-        for(int j=0;j<m_config.app_num;j++){
-            sampleing_access[i].push_back(0);
-        }
-    }
-    
-    num_stack=m_config.n_set/m_config.samplingWidth;
-
 }
 partition_config::partition_config(){}
 
 
 
 void partition_unit::access(unsigned core_id,unsigned set_idx,new_addr_type tagId){
-    unsigned setId = set_idx;
-    unsigned appId=core_id/15;//TODO
-    total_access++;
-    if(setId%m_config.samplingWidth==0){
-        unsigned stackId=setId/m_config.samplingWidth;
+    
+    
+    
+    if(set_idx%m_config.samplingWidth==0){
+        
+        unsigned appId=core_id/15;//TODO
+        unsigned stackId=set_idx/m_config.samplingWidth;
+        appAccess[appId]++;
+        sampleing_access[stackId][appId]++;
         assert(stackId<num_stack);
+        
 
         sampleing_access[stackId][appId]++;
         std::list<new_addr_type>::iterator it=l2_sim_stack_array[stackId][appId].begin();
         int numToAdd=0;
         for(int i=0;i<m_config.n_assoc;i++){
             assert(it!=l2_sim_stack_array[stackId][appId].end());
-            if(numToAdd==0&&*it==-1){//miss and have ivalid entry fixbug 2018.6.20 need to place the newest on at first way
+            if(numToAdd==0&&*it==-1){//miss and have ivalid entry
                 l2_sim_stack_array[stackId][appId].erase(it);
                 l2_sim_stack_array[stackId][appId].push_front(tagId);
                 break;
             }
-            if(numToAdd==0&&*it==tagId){//hit //fix bug 2018 06 20
+            if(numToAdd==0&&*it==tagId){//hit
+                
                 numToAdd=1;
                 l2_sim_stack_array[stackId][appId].push_front(tagId);
                 it--;
                 std::list<new_addr_type>::iterator newit=it;
                 it++;
                 l2_sim_stack_array[stackId][appId].erase(it);
-                it=newit;
                 
             }
 
