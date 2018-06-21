@@ -1,6 +1,5 @@
 #ifndef PARTITION_HPP
 #define PARTITION_HPP
-#include<gtest/gtest.h>
 //code here
 
 /*author sjq
@@ -11,17 +10,20 @@
 //#include "../option_parser.h"
 #include <vector>
 #include <list>
+#define ULL unsigned long long
+
+#define L(x) std::list<x >
+
+#define V(x) std::vector<x >
+
 //#include "gpu-sim.h"
 //#include "gpu-cache.h"
 typedef unsigned long long new_addr_type;
 typedef unsigned long long cycle_size;
+
 struct partition_config
 {
     partition_config();
-    partition_config(int assoc,int set){
-        n_assoc=assoc;
-        n_set=set;
-    }
     void init(int assoc,int set){
         n_assoc=assoc;
         n_set=set;
@@ -41,9 +43,7 @@ struct partition_config
 
 };
 class partition_unit{
-    friend class PartitionTest;
-    friend class testing::Test;
-    friend class Test;
+    //friend std::ostream& operator <<(std::ostream & out,partition_unit& unit);
     public: 
     partition_unit(const partition_config&);
     void access(unsigned core_id,unsigned set_idx,new_addr_type tagId);
@@ -56,18 +56,26 @@ class partition_unit{
         return m_config;
     }
     std::vector<unsigned> get_best_local();
+
     public:
-    unsigned long long total_access;
-    std::vector<std::vector<unsigned long long > > sampleing_access;
-    std::vector<int> best_partition;
-    unsigned num_stack;
-    std::vector<std::vector<std::list<new_addr_type> > > l2_sim_stack_array;//8*2*16
-    std::vector<std::vector<unsigned long long> > counter;//overall counter2*16
-    std::vector<std::vector<std::vector<unsigned long long> > > local_counter;//local counter8*2*16
+    //unsigned long long total_access;
     const partition_config& m_config;
+    unsigned num_stack;
+    V(ULL) appAccess;//2
     
-    std::vector<std::vector<unsigned > >partition_stat;
+    V(V(ULL)) sampleing_access;//sampling num* appNum
+    V(int) best_partition;
+    
+    V(V(L(ULL))) l2_sim_stack_array;//8*2*16
+    V(V(ULL)) counter;//overall counter2*16
+    V(V(V(ULL))) local_counter;//local counter8*2*16
+    
+    
+    V(V(unsigned)) partition_stat;
 };
+//std::ostream& operator <<(std::ostream & out,partition_unit& unit){
+//
+//}
 
 
 #endif
